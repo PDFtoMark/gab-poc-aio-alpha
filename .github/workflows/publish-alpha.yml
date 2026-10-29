@@ -58,4 +58,4 @@ jobs:
         with:
           token: ${{ secrets.ADOBE_BOT_NPM_TOKEN }}
       - name: Build packages
-        run: ./scripts/build.sh
+        run: bash ./scripts/build.sh
