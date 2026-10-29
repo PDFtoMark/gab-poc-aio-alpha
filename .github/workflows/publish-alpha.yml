@@ -1,0 +1,61 @@
+name: Publish Alpha
+on:
+  issue_comment:
+    types: [created]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+jobs:
+  prepare:
+    name: Resolve PR
+    if: |
+      github.repository == 'PDFtoMark/gab-poc-aio-alpha' &&
+      github.event.issue.pull_request &&
+      github.event.comment.user.type != 'Bot' &&
+      contains(github.event.comment.body, '/snapshot')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      pr_number: ${{ github.event.issue.number }}
+      head_sha: ${{ steps.pr_details.outputs.head_sha }}
+    steps:
+      - name: Check actor permission
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner, repo: context.repo.repo, username: context.actor,
+            });
+            if (data.permission !== 'admin') {
+              core.setFailed(`@${context.actor} does not have admin permission on this repository (actual: ${data.permission}).`);
+            }
+      - name: Get PR details
+        id: pr_details
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ github.event.issue.number }}
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({ owner: context.repo.owner, repo: context.repo.repo, pull_number: Number(process.env.PR_NUMBER) });
+            if (pr.data.head.ref === 'main') { core.setFailed("Publish Alpha can't snapshot a PR whose head branch is main."); return; }
+            core.setOutput('head_sha', pr.data.head.sha);
+  release:
+    name: Release Alpha
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.head_sha }}
+      - uses: ./.github/actions/setup-release
+        with:
+          token: ${{ secrets.ADOBE_BOT_NPM_TOKEN }}
+      - name: Build packages
+        run: ./scripts/build.sh
