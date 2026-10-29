@@ -1,0 +1,16 @@
+name: Setup Release Environment
+description: Setup pnpm and Node.js with registry auth
+inputs:
+  token:
+    description: Auth token for the npm registry
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Configure publish auth
+      shell: bash
+      env:
+        TOKEN: ${{ inputs.token }}
+      run: |
+        echo "NODE_AUTH_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
+        echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
